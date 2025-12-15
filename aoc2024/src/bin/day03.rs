@@ -79,3 +79,4 @@ fn part2(l: &[Vec<i32>]) -> i32
     count
 
 }
+
