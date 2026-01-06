@@ -12,11 +12,12 @@ fn main()
 fn part1(lines: &[Vec<u8>]) -> i32 
 {
     let mut res: i32 = 0;
-    let directions = vec![(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)];
-    let target: Vec<u8> = vec![b'X', b'M', b'A', b'S'];
 
     let mut find_occurences = |start_row: usize, start_col: usize|
     {
+        let directions = vec![(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)];
+        let target: Vec<u8> = vec![b'X', b'M', b'A', b'S'];
+
         'outer: for (dr, dc) in directions.iter()
         {
             let (mut r, mut c) = (start_row as i32, start_col as i32);
@@ -34,7 +35,7 @@ fn part1(lines: &[Vec<u8>]) -> i32
             res += 1;
         }
     };
-    
+
     for r in 0..lines.len()
     {
         for c in 0..lines[0].len()
@@ -49,12 +50,12 @@ fn part1(lines: &[Vec<u8>]) -> i32
 fn part2(lines: &[Vec<u8>]) -> i32
 {
     let mut res: i32 = 0;
-    let directions = vec![(1, 1), (1, -1)];
 
     let mut find_occurences = |start_row: usize, start_col: usize|
     {
         if lines[start_row][start_col] != b'A' { return; }
 
+        let directions = vec![(1, 1), (1, -1)];
         for (dr, dc) in directions.iter()
         {
             let (r1, c1) = (start_row as i32 + dr, start_col as i32 + dc);

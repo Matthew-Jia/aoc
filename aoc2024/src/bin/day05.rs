@@ -1,90 +1,143 @@
 use aoc2024;
+use std::collections::HashMap;
+use std::collections::HashSet;
+
+type AdjList = HashMap<i32, Vec<i32>>;
 
 fn main() 
 {
-    let input: String   = aoc2024::read_input(4);
-    let lines: Vec<Vec<u8>> = input.lines().map(|l| l.as_bytes().to_vec()).collect();
+    let input: String = aoc2024::read_input(5);
+    let (rules, mut updates) = parse_input(&input); // rules is a vector of (first, second) pages
 
-    println!("answer to part 1 = {}", part1(&lines));
-    println!("answer to part 2 = {}", part2(&lines));
+    println!("answer to part 1 = {}", part1(&rules, &updates));
+    println!("answer to part 2 = {}", part2(&rules, &mut updates));
 }
 
-fn part1(lines: &[Vec<u8>]) -> i32 
+fn parse_input(input: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>)
 {
-    let mut res: i32 = 0;
-    let directions = vec![(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)];
-    let target: Vec<u8> = vec![b'X', b'M', b'A', b'S'];
+    let mut rules: Vec<(i32, i32)> = Vec::new();
+    let mut updates: Vec<Vec<i32>> = Vec::new();
 
-    let mut find_occurences = |start_row: usize, start_col: usize|
+    let mut iter = input.lines();
+
+    while let Some(rule) = iter.next() 
     {
-        'outer: for (dr, dc) in directions.iter()
-        {
-            let (mut r, mut c) = (start_row as i32, start_col as i32);
+        if rule.is_empty() { break; }
 
-            for i in 0..4
+        let (a, b) = rule.split_once('|').unwrap();
+        rules.push((a.parse().unwrap(), b.parse().unwrap()));
+    }
+
+    while let Some(update) = iter.next() 
+    {
+        let update: Vec<i32> = update.split(',').map(|c| c.parse::<i32>().unwrap()).collect();
+        updates.push(update);
+    }
+
+    (rules, updates)
+}
+
+fn process_update_1(update: &[i32], pre: &AdjList) -> bool
+{
+    let mut restricted: HashSet<i32> = HashSet::new();
+
+    for page in update
+    {
+        if restricted.contains(page) { return false; }
+
+        if let Some(prereqs) = pre.get(&page)
+        {
+            for prereq in prereqs
             {
-                if r < 0 || r >= lines.len() as i32             { continue 'outer; }
-                if c < 0 || c >= lines[0].len() as i32          { continue 'outer; }
-                if lines[r as usize][c as usize] != target[i]   { continue 'outer; }
-
-                r += dr;
-                c += dc;
+                restricted.insert(*prereq);
             }
-
-            res += 1;
-        }
-    };
-    
-    for r in 0..lines.len()
-    {
-        for c in 0..lines[0].len()
-        {
-            find_occurences(r, c);
         }
     }
-
-    res
+    true
 }
 
-fn part2(lines: &[Vec<u8>]) -> i32
+// rules is a vector of (first, second) pages
+fn part1(rules: &[(i32, i32)], updates: &[Vec<i32>]) -> i32 
 {
-    let mut res: i32 = 0;
-    let directions = vec![(1, 1), (1, -1)];
+    let mut res = 0;
 
-    let mut find_occurences = |start_row: usize, start_col: usize|
+    // make adj list
+    let mut pre: AdjList = HashMap::new();
+    for (u, v) in rules
     {
-        if lines[start_row][start_col] != b'A' { return; }
+        pre.entry(*v).or_default().push(*u);
+    }
 
-        for (dr, dc) in directions.iter()
-        {
-            let (r1, c1) = (start_row as i32 + dr, start_col as i32 + dc);
-            let (r2, c2) = (start_row as i32 - dr, start_col as i32 - dc);
-
-            if r1 < 0 || c1 < 0 { return; }
-            if r2 < 0 || c2 < 0 { return; }
-
-            let (r1, c1) = (r1 as usize, c1 as usize);
-            let (r2, c2) = (r2 as usize, c2 as usize);
-
-            if r1 >= lines.len() || c1 >= lines[r1].len() { return; }
-            if r2 >= lines.len() || c2 >= lines[r2].len() { return; }
-
-            let mut diag: Vec<u8> = vec![lines[r1][c1], lines[r2][c2]];
-            diag.sort();
-
-            if diag != b"MS" { return; }
-        }
-        res += 1;
-    };
-    
-    for r in 1..lines.len()-1
+    // process updates
+    for update in updates
     {
-        for c in 1..lines[0].len()-1
-        {
-            find_occurences(r, c);
-        }
+        if !process_update_1(update, &pre) { continue; }
+        res += update[update.len()/2];
     }
 
     res
 }
 
+// fixes an index of an update, returns true if a page was moved
+fn fix_page(ind: usize, update: &mut [i32], to_index: &mut HashMap<i32, usize>, dep: &AdjList) -> bool
+{
+    let mut page_fixed: bool = false;
+    to_index.insert(update[ind], ind);
+
+    // loop until the index has been swapped with a page that doesn't have any earlier dependencies
+    loop {
+        let page = update[ind];
+
+        if let Some(dep_pages) = dep.get(&page)
+        {
+            if let Some(earliest_dep_ind) = dep_pages
+                .iter()
+                    .filter_map(|dep_page| to_index.get(dep_page).copied())
+                    .min()
+            {
+                page_fixed = true;
+                let earliest_dep_page: i32 = update[earliest_dep_ind];
+
+                update.swap(ind, earliest_dep_ind);
+                to_index.insert(page, earliest_dep_ind);
+                to_index.insert(earliest_dep_page, ind);
+            }
+            else { return page_fixed; }
+        }
+        else { return page_fixed; }
+    }
+}
+
+// processes update, returns true if the update was correctly ordered
+fn process_update_2(update: &mut Vec<i32>, dep: &AdjList) -> bool
+{
+    let mut is_ordered: bool = true;
+    let mut to_index: HashMap<i32, usize> = HashMap::new();
+
+    for i in 0..update.len()
+    {
+        is_ordered &= !fix_page(i, update, &mut to_index, dep);
+    }
+    is_ordered
+}
+
+fn part2(rules: &[(i32, i32)], updates: &mut [Vec<i32>]) -> i32 
+{
+    let mut res = 0;
+
+    // make adj list
+    let mut dep: AdjList = HashMap::new();
+    for (u, v) in rules
+    {
+        dep.entry(*u).or_default().push(*v);
+    }
+
+    // process updates
+    for update in updates
+    {
+        if process_update_2(update, &dep) { continue; }
+        res += update[update.len()/2];
+    }
+
+    res
+}
