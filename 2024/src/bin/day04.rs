@@ -3,13 +3,13 @@ use aoc2024;
 fn main() 
 {
     let input: String   = aoc2024::read_input(4);
-    let lines: Vec<Vec<u8>> = input.lines().map(|l| l.as_bytes().to_vec()).collect();
+    let lines: Vec<&[u8]> = input.lines().map(|l| l.as_bytes()).collect();
 
     println!("answer to part 1 = {}", part1(&lines));
     println!("answer to part 2 = {}", part2(&lines));
 }
 
-fn part1(lines: &[Vec<u8>]) -> i32 
+fn part1(lines: &[&[u8]]) -> i32 
 {
     let mut res: i32 = 0;
 
@@ -47,7 +47,7 @@ fn part1(lines: &[Vec<u8>]) -> i32
     res
 }
 
-fn part2(lines: &[Vec<u8>]) -> i32
+fn part2(lines: &[&[u8]]) -> i32
 {
     let mut res: i32 = 0;
 

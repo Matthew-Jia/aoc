@@ -108,6 +108,7 @@ fn fix_page(ind: usize, update: &mut [i32], to_index: &mut HashMap<i32, usize>, 
     }
 }
 
+
 // processes update, returns true if the update was correctly ordered
 fn process_update_2(update: &mut Vec<i32>, dep: &AdjList) -> bool
 {
